@@ -1,0 +1,183 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<%@ Page Language="C#" %>
+<%@ Register tagprefix="SharePoint" namespace="Microsoft.SharePoint.WebControls" assembly="Microsoft.SharePoint, Version=15.0.0.0, Culture=neutral, PublicKeyToken=71e9bce111e9429c" %>
+<html dir="ltr" xmlns="http://www.w3.org/1999/xhtml">
+
+<head runat="server">
+<meta name="WebPartPageExpansion" content="full" />
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>UK Stores</title>
+<meta http-equiv="X-UA-Compatible" content="IE=10" />
+<SharePoint:CssRegistration Name="default" runat="server"/>
+<script type="text/javascript" src="https://kfgkw.sharepoint.com/intranet/SiteAssets/js/angular.js" ></script>
+<script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?sensor=false"></script>
+<style type="text/css">
+#uk_map{
+    width: 550px;
+    height: 650px;
+    overflow:scroll !important; position:absolute;
+}
+</style>
+<script type="text/javascript">
+	
+	var spa = angular.module('SPA', []);
+	
+	
+	spa.controller('DashboardController', ['$scope', '$http', function ($scope, $http) {
+
+	    //Kuwait,United Kingdom,Iraq
+
+	$scope.Country = "";
+
+	Fetch_UK_Data();
+	
+	function Fetch_UK_Data() {
+
+	   
+	    //var url = "domain_url/_api/web/lists/getbytitle('KFG%20Sites')/items?$select=Longitude,Brands,Latitude,Title,Country,Brand_logo"
+	    var url = "domain_url/_api/web/lists/getbytitle('KFG%20Sites')/items?$top=1000"
+	   // var url = "domain_url/_api/web/lists/getbytitle('KFG%20Sites')/items?$select=Longitude,Brands,Latitude,Title,Country,Brand_logo&$filter%20=%20Country%20eq%20%27United%20Kingdom%20%27"
+		var countryid = GetParameterValues("cid");
+	    var value = countryid.toLowerCase()
+	    if(value  == "kwd")
+	    {
+	        $scope.Country = "Kuwait"
+	    }
+	    else if (value  == "uk")
+	    {
+	        $scope.Country = "United Kingdom"
+	    }
+	    else if (value == "iraq")
+	    {
+	        $scope.Country = "Iraq"
+	    }
+
+
+	   	$http.get(url).then(function(result){	    	
+	   	    console.log(result.data.value);
+	   	   
+				DrawMap(result.data.value);
+		     }).catch(function(error){
+		     	console.log(error);
+		     });
+	  }
+	  
+	function DrawMap(map_data,value) {
+	     
+		var map, infoWindow;
+		var markers = [];
+		var mapOptions = {};
+
+		if ($scope.Country == "Kuwait") {
+		    mapOptions = {
+		        center: new google.maps.LatLng(29.3117, 47.4818),
+		        zoom: 9,
+		        mapTypeId: google.maps.MapTypeId.ROADMAP,
+		        scrollwheel: false
+		    };
+		}
+		else if ($scope.Country == "United Kingdom") {
+		    mapOptions = {
+		        center: new google.maps.LatLng(53, -3),
+		        zoom: 7,
+		        mapTypeId: google.maps.MapTypeId.ROADMAP,
+		        scrollwheel: false
+		    };
+		}
+		else if ($scope.Country == "Iraq") {
+		    mapOptions = {
+		        center: new google.maps.LatLng(33.2232, 43.6793),
+		        zoom: 7,
+		        mapTypeId: google.maps.MapTypeId.ROADMAP,
+		        scrollwheel: false
+		    };
+		}
+	
+	    // map config
+	    //var mapOptions = {
+	    //    center: new google.maps.LatLng(53, -3),
+	    //    zoom: 7,
+	    //    mapTypeId: google.maps.MapTypeId.ROADMAP,
+	    //    scrollwheel: false
+	    //};
+	
+	    // init the map
+	    function initMap() {
+	        if (map === void 0) {
+	            map = new google.maps.Map(document.getElementById("uk_map"), mapOptions);
+	        }
+	    }
+	
+	    // place a marker
+	    function setMarker(map, position, item) {
+	        var marker;
+	        var markerOptions = {
+	            position: position,
+	            map: map,
+	            title: item.Brands,
+	            icon: (item.Brand_logo != "" && item.Brand_logo != null && item.Brand_logo != undefined) ? item.Brand_logo : 'https://maps.google.com/mapfiles/ms/icons/green-dot.png'
+
+                    //(title == "Burger King") ? 'https://kfgkw.sharepoint.com/intranet/SiteAssets/Images/brand_logo/BK2.png' : 'https://maps.google.com/mapfiles/ms/icons/green-dot.png'
+	               
+	        };
+	        /*
+	            Applebees:21,Ayami:35,Burger King,
+	        */
+	
+	        marker = new google.maps.Marker(markerOptions);
+	        markers.push(marker); // add marker to array
+	
+	        google.maps.event.addListener(marker, 'click', function () {
+	            // close window if not undefined
+	            if (infoWindow !== void 0) {
+	                infoWindow.close();
+	            }
+	            // create new window
+	            var infoWindowOptions = { content: item.Title };
+	            infoWindow = new google.maps.InfoWindow(infoWindowOptions);
+	            infoWindow.open(map, marker);
+	        });
+	    }
+	
+	    // show the map and place some markers
+	    initMap();
+	        
+	    angular.forEach(map_data, function (item, key) {
+	        if (item.Country == $scope.Country) {
+	            setMarker(map, new google.maps.LatLng(item.Latitude, item.Longitude), item);
+	        }
+		});	
+
+	
+	       /* setMarker(map, new google.maps.LatLng(51.508515, -0.125487), 'London', 'Just some content');
+	        setMarker(map, new google.maps.LatLng(52.370216, 4.895168), 'Amsterdam', 'More content');
+	        setMarker(map, new google.maps.LatLng(48.856614, 2.352222), 'Paris', 'Text here');
+	        setMarker(map, new google.maps.LatLng(47.856614, 2.352222), 'Paris', 'Text here'); */
+
+	  }
+
+	function GetParameterValues(param) {
+	    var url = window.location.href.slice(window.location.href.indexOf('?') + 1).split('&');
+	    for (var i = 0; i < url.length; i++) {
+	        var urlparam = url[i].split('=');
+	        if (urlparam[0] == param) {
+	            return urlparam[1];
+	        }
+	    }
+	}
+
+	}]);
+
+	
+	
+</script>
+</head>
+
+<body ng-app="SPA"  ng-controller="DashboardController">
+
+<form id="form1" runat="server">
+    <div id="uk_map" style="width:100%; overflow:scroll !important; position:absolute;"></div></form>
+
+</body>
+
+</html>
